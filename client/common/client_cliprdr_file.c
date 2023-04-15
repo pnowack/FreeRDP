@@ -657,47 +657,47 @@ static UINT cliprdr_file_fuse_readdir_int(fuse_req_t req, fuse_ino_t ino, size_t
 	if (!buf)
 		goto final;
 
-	for (size_t index = off; index < count + 2; index++)
+	for (size_t index = off; index < 2; index++)
 	{
 		struct stat stbuf = { 0 };
 
 		switch (index)
 		{
 			case 0:
-			{
 				stbuf.st_ino = ino;
 				direntry_len = fuse_add_direntry(req, buf + pos, size - pos, ".", &stbuf, index);
 				if (direntry_len > size - pos)
 					break;
 				pos += direntry_len;
-			}
-			break;
+				break;
 			case 1:
-			{
 				stbuf.st_ino = node->parent_ino;
 				direntry_len = fuse_add_direntry(req, buf + pos, size - pos, "..", &stbuf, index);
 				if (direntry_len > size - pos)
 					break;
 				pos += direntry_len;
-			}
-			break;
+				break;
 			default:
-			{
-				/* execlude . and .. */
-				/* previous lock for ino_list still work*/
-				CliprdrFuseInode* child_node = ArrayList_GetItem(node->child_inos, index - 2);
-				if (!child_node)
-					break;
-
-				stbuf.st_ino = child_node->ino;
-				direntry_len =
-				    fuse_add_direntry(req, buf + pos, size - pos, child_node->name, &stbuf, index);
-				if (direntry_len > size - pos)
-					break;
-				pos += direntry_len;
-			}
-			break;
+				WINPR_ASSERT(FALSE);
+				break;
 		}
+	}
+
+	for (size_t index = off + 1; index < count + 2; index++)
+	{
+		struct stat stbuf = { 0 };
+
+		/* previous lock for ino_list still work*/
+		CliprdrFuseInode* child_node = ArrayList_GetItem(node->child_inos, index - 2);
+		if (!child_node)
+			break;
+
+		stbuf.st_ino = child_node->ino;
+		direntry_len =
+		    fuse_add_direntry(req, buf + pos, size - pos, child_node->name, &stbuf, index);
+		if (direntry_len > size - pos)
+			break;
+		pos += direntry_len;
 	}
 
 	res = 0;
