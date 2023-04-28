@@ -273,9 +273,9 @@ void rfx_encode_rgb(RFX_CONTEXT* context, RFX_TILE* tile)
 	YQuant = context->quants + (tile->quantIdxY * 10);
 	CbQuant = context->quants + (tile->quantIdxCb * 10);
 	CrQuant = context->quants + (tile->quantIdxCr * 10);
-	pSrcDst[0] = (INT16*)((BYTE*)(&pBuffer[((8192 + 32) * 0) + 16])); /* y_r_buffer */
-	pSrcDst[1] = (INT16*)((BYTE*)(&pBuffer[((8192 + 32) * 1) + 16])); /* cb_g_buffer */
-	pSrcDst[2] = (INT16*)((BYTE*)(&pBuffer[((8192 + 32) * 2) + 16])); /* cr_b_buffer */
+	pSrcDst[0] = (INT16*)((BYTE*)(&pBuffer[((8192 + 64) * 0) + 32])); /* y_r_buffer */
+	pSrcDst[1] = (INT16*)((BYTE*)(&pBuffer[((8192 + 64) * 1) + 32])); /* cb_g_buffer */
+	pSrcDst[2] = (INT16*)((BYTE*)(&pBuffer[((8192 + 64) * 2) + 32])); /* cr_b_buffer */
 	PROFILER_ENTER(context->priv->prof_rfx_encode_rgb)
 	PROFILER_ENTER(context->priv->prof_rfx_encode_format_rgb)
 	rfx_encode_format_rgb(tile->data, tile->width, tile->height, tile->scanline,

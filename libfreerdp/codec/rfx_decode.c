@@ -78,9 +78,9 @@ BOOL rfx_decode_rgb(RFX_CONTEXT* context, const RFX_TILE* tile, BYTE* rgb_buffer
 	cb_quants = context->quants + (tile->quantIdxCb * 10);
 	cr_quants = context->quants + (tile->quantIdxCr * 10);
 	pBuffer = (BYTE*)BufferPool_Take(context->priv->BufferPool, -1);
-	pSrcDst[0] = (INT16*)((BYTE*)(&pBuffer[((8192 + 32) * 0) + 16]));             /* y_r_buffer */
-	pSrcDst[1] = (INT16*)((BYTE*)(&pBuffer[((8192 + 32) * 1) + 16]));             /* cb_g_buffer */
-	pSrcDst[2] = (INT16*)((BYTE*)(&pBuffer[((8192 + 32) * 2) + 16]));             /* cr_b_buffer */
+	pSrcDst[0] = (INT16*)((BYTE*)(&pBuffer[((8192 + 64) * 0) + 32]));             /* y_r_buffer */
+	pSrcDst[1] = (INT16*)((BYTE*)(&pBuffer[((8192 + 64) * 1) + 32]));             /* cb_g_buffer */
+	pSrcDst[2] = (INT16*)((BYTE*)(&pBuffer[((8192 + 64) * 2) + 32]));             /* cr_b_buffer */
 	rfx_decode_component(context, y_quants, tile->YData, tile->YLen, pSrcDst[0]); /* YData */
 	rfx_decode_component(context, cb_quants, tile->CbData, tile->CbLen, pSrcDst[1]); /* CbData */
 	rfx_decode_component(context, cr_quants, tile->CrData, tile->CrLen, pSrcDst[2]); /* CrData */

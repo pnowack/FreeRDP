@@ -252,19 +252,19 @@ RFX_CONTEXT* rfx_context_new_ex(BOOL encoder, UINT32 ThreadingFlags)
 	}
 
 	/*
-	 * align buffers to 16 byte boundary (needed for SSE/NEON instructions)
+	 * align buffers to 32 byte boundary (needed for SSE/AVX/NEON instructions)
 	 *
 	 * y_r_buffer, cb_g_buffer, cr_b_buffer: 64 * 64 * sizeof(INT16) = 8192 (0x2000)
 	 * dwt_buffer: 32 * 32 * 2 * 2 * sizeof(INT16) = 8192, maximum sub-band width is 32
 	 *
-	 * Additionally we add 32 bytes (16 in front and 16 at the back of the buffer)
-	 * in order to allow optimized functions (SEE, NEON) to read from positions
+	 * Additionally we add 64 bytes (32 in front and 32 at the back of the buffer)
+	 * in order to allow optimized functions (SEE, AVX, NEON) to read from positions
 	 * that are actually in front/beyond the buffer. Offset calculations are
 	 * performed at the BufferPool_Take function calls in rfx_encode/decode.c.
 	 *
 	 * We then multiply by 3 to use a single, partioned buffer for all 3 channels.
 	 */
-	priv->BufferPool = BufferPool_New(TRUE, (8192 + 32) * 3, 16);
+	priv->BufferPool = BufferPool_New(TRUE, (8192 + 64) * 3, 32);
 
 	if (!priv->BufferPool)
 		goto fail;
@@ -1703,9 +1703,9 @@ RFX_MESSAGE* rfx_encode_message(RFX_CONTEXT* context, const RFX_RECT* rects, siz
 				if (!(tile->YCbCrData = (BYTE*)BufferPool_Take(context->priv->BufferPool, -1)))
 					goto skip_encoding_loop;
 
-				tile->YData = (BYTE*)&(tile->YCbCrData[((8192 + 32) * 0) + 16]);
-				tile->CbData = (BYTE*)&(tile->YCbCrData[((8192 + 32) * 1) + 16]);
-				tile->CrData = (BYTE*)&(tile->YCbCrData[((8192 + 32) * 2) + 16]);
+				tile->YData = (BYTE*)&(tile->YCbCrData[((8192 + 64) * 0) + 32]);
+				tile->CbData = (BYTE*)&(tile->YCbCrData[((8192 + 64) * 1) + 32]);
+				tile->CrData = (BYTE*)&(tile->YCbCrData[((8192 + 64) * 2) + 32]);
 
 				if (!rfx_ensure_tiles(message, 1))
 					goto skip_encoding_loop;
