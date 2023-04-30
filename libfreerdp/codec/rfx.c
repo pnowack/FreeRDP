@@ -49,17 +49,9 @@
 #include "rfx_dwt.h"
 #include "rfx_rlgr.h"
 
-#include "rfx_sse2.h"
-#include "rfx_neon.h"
+#include "rfx_simd.h"
 
 #define TAG FREERDP_TAG("codec")
-
-#ifndef RFX_INIT_SIMD
-#define RFX_INIT_SIMD(_rfx_context) \
-	do                              \
-	{                               \
-	} while (0)
-#endif
 
 #define RFX_KEY "Software\\" FREERDP_VENDOR_STRING "\\" FREERDP_PRODUCT_STRING "\\RemoteFX"
 
@@ -347,7 +339,7 @@ RFX_CONTEXT* rfx_context_new_ex(BOOL encoder, UINT32 ThreadingFlags)
 	context->dwt_2d_encode = rfx_dwt_2d_encode;
 	context->rlgr_decode = rfx_rlgr_decode;
 	context->rlgr_encode = rfx_rlgr_encode;
-	RFX_INIT_SIMD(context);
+	rfx_init_simd(context);
 	context->state = RFX_STATE_SEND_HEADERS;
 	context->expectedDataBlockType = WBT_FRAME_BEGIN;
 	return context;

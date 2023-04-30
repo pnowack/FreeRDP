@@ -1,8 +1,8 @@
 /**
  * FreeRDP: A Remote Desktop Protocol Implementation
- * RemoteFX Codec Library - SSE2 Optimizations
+ * RemoteFX Codec Library - SIMD Optimizations
  *
- * Copyright 2011 Stephen Erisman
+ * Copyright 2023 Pascal Nowack <Pascal.Nowack@gmx.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
  * limitations under the License.
  */
 
-#ifndef FREERDP_LIB_CODEC_RFX_SSE2_H
-#define FREERDP_LIB_CODEC_RFX_SSE2_H
+#ifndef FREERDP_LIB_CODEC_RFX_SIMD_H
+#define FREERDP_LIB_CODEC_RFX_SIMD_H
 
 #include <freerdp/codec/rfx.h>
 #include <freerdp/api.h>
 
-FREERDP_LOCAL void rfx_init_sse2(RFX_CONTEXT* context);
+FREERDP_LOCAL void rfx_init_simd(RFX_CONTEXT* context);
 
-#endif /* FREERDP_LIB_CODEC_RFX_SSE2_H */
+#endif /* FREERDP_LIB_CODEC_RFX_SIMD_H */

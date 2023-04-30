@@ -163,6 +163,10 @@ set(CODEC_SRCS
     codec/h264.c
     codec/yuv.c)
 
+set(CODEC_SIMD_SRCS
+    codec/rfx_simd.c
+    codec/rfx_simd.h)
+
 set(CODEC_SSE2_SRCS
     codec/rfx_sse2.c
     codec/rfx_sse2.h
@@ -172,6 +176,8 @@ set(CODEC_SSE2_SRCS
 set(CODEC_NEON_SRCS
     codec/rfx_neon.c
     codec/rfx_neon.h)
+
+set(CODEC_SRCS ${CODEC_SRCS} ${CODEC_SIMD_SRCS})
 
 if(WITH_SSE2)
     set(CODEC_SRCS ${CODEC_SRCS} ${CODEC_SSE2_SRCS})
