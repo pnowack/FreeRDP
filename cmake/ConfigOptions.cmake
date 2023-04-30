@@ -17,6 +17,12 @@ option(WITH_MANPAGES "Generate manpages." ON)
 option(WITH_PROFILER "Compile profiler." OFF)
 option(WITH_GPROF "Compile with GProf profiler." OFF)
 
+if((TARGET_ARCH MATCHES "x86|x64") AND (NOT DEFINED WITH_AVX2))
+	option(WITH_AVX2 "Enable AVX2 optimization." ON)
+else()
+	option(WITH_AVX2 "Enable AVX2 optimization." OFF)
+endif()
+
 if((TARGET_ARCH MATCHES "x86|x64") AND (NOT DEFINED WITH_SSE2))
 	option(WITH_SSE2 "Enable SSE2 optimization." ON)
 else()

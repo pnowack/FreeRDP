@@ -23,6 +23,9 @@
 #include <freerdp/primitives.h>
 #include <winpr/sysinfo.h>
 
+#ifdef WITH_AVX2
+#include <immintrin.h>
+#endif /* WITH_AVX2 */
 #ifdef WITH_SSE2
 #include <emmintrin.h>
 #elif defined(WITH_NEON)
@@ -48,6 +51,12 @@ static primitives_t* generic = NULL;
 	do                                                         \
 	{                                                          \
 		_val = _mm_min_epi16(_max, _mm_max_epi16(_val, _min)); \
+	} while (0)
+
+#define _mm256_between_epi16(_val, _min, _max)                       \
+	do                                                               \
+	{                                                                \
+		_val = _mm256_min_epi16(_max, _mm256_max_epi16(_val, _min)); \
 	} while (0)
 
 #ifdef DO_PREFETCH
@@ -716,6 +725,106 @@ static pstatus_t sse2_RGBToYCbCr_16s16s_P3P3(const INT16* const pSrc[3], int src
 
 	return PRIMITIVES_SUCCESS;
 }
+
+#ifdef WITH_AVX2
+static pstatus_t avx2_RGBToYCbCr_16s16s_P3P3(const INT16* const pSrc[3], int srcStep,
+                                             INT16* pDst[3], int dstStep, const prim_size_t* roi)
+{
+	__m256i min, max, y_r, y_g, y_b, cb_r, cb_g, cb_b, cr_r, cr_g, cr_b;
+	const __m256i* r_buf = (const __m256i*)(pSrc[0]);
+	const __m256i* g_buf = (const __m256i*)(pSrc[1]);
+	const __m256i* b_buf = (const __m256i*)(pSrc[2]);
+	__m256i* y_buf = (__m256i*)(pDst[0]);
+	__m256i* cb_buf = (__m256i*)(pDst[1]);
+	__m256i* cr_buf = (__m256i*)(pDst[2]);
+	UINT32 yp;
+	int srcbump, dstbump, imax;
+
+	if (((ULONG_PTR)(pSrc[0]) & 0x1f) || ((ULONG_PTR)(pSrc[1]) & 0x1f) ||
+	    ((ULONG_PTR)(pSrc[2]) & 0x1f) || ((ULONG_PTR)(pDst[0]) & 0x1f) ||
+	    ((ULONG_PTR)(pDst[1]) & 0x1f) || ((ULONG_PTR)(pDst[2]) & 0x1f) || (roi->width & 0x0f) ||
+	    (srcStep & 255) || (dstStep & 255))
+	{
+		/* We can't maintain 32-byte alignment. */
+		return sse2_RGBToYCbCr_16s16s_P3P3(pSrc, srcStep, pDst, dstStep, roi);
+	}
+
+	min = _mm256_set1_epi16(-128 * 32);
+	max = _mm256_set1_epi16(127 * 32);
+
+	y_r = _mm256_set1_epi16(9798);    /*  0.299000 << 15 */
+	y_g = _mm256_set1_epi16(19235);   /*  0.587000 << 15 */
+	y_b = _mm256_set1_epi16(3735);    /*  0.114000 << 15 */
+	cb_r = _mm256_set1_epi16(-5535);  /* -0.168935 << 15 */
+	cb_g = _mm256_set1_epi16(-10868); /* -0.331665 << 15 */
+	cb_b = _mm256_set1_epi16(16403);  /*  0.500590 << 15 */
+	cr_r = _mm256_set1_epi16(16377);  /*  0.499813 << 15 */
+	cr_g = _mm256_set1_epi16(-13714); /* -0.418531 << 15 */
+	cr_b = _mm256_set1_epi16(-2663);  /* -0.081282 << 15 */
+	srcbump = srcStep / sizeof(__m256i);
+	dstbump = dstStep / sizeof(__m256i);
+	imax = roi->width * sizeof(INT16) / sizeof(__m256i);
+
+	for (yp = 0; yp < roi->height; ++yp)
+	{
+		int i;
+
+		for (i = 0; i < imax; i++)
+		{
+			/* In order to use AVX2 signed 16-bit integer multiplication we
+			 * need to convert the floating point factors to signed int
+			 * without loosing information.  The result of this multiplication
+			 * is 32 bit and using AVX2 we get either the product's hi or lo
+			 * word.  Thus we will multiply the factors by the highest
+			 * possible 2^n and take the upper 16 bits of the signed 32-bit
+			 * result (_mm256_mulhi_epi16).  Since the final result needs to
+			 * be scaled by << 5 and also in in order to keep the precision
+			 * within the upper 16 bits we will also have to scale the RGB
+			 * values used in the multiplication by << 5+(16-n).
+			 */
+			__m256i r, g, b, y, cb, cr;
+			r = _mm256_load_si256(y_buf + i);
+			g = _mm256_load_si256(g_buf + i);
+			b = _mm256_load_si256(b_buf + i);
+			/* r<<6; g<<6; b<<6 */
+			r = _mm256_slli_epi16(r, 6);
+			g = _mm256_slli_epi16(g, 6);
+			b = _mm256_slli_epi16(b, 6);
+			/* y = HIWORD(r*y_r) + HIWORD(g*y_g) + HIWORD(b*y_b) + min */
+			y = _mm256_mulhi_epi16(r, y_r);
+			y = _mm256_add_epi16(y, _mm256_mulhi_epi16(g, y_g));
+			y = _mm256_add_epi16(y, _mm256_mulhi_epi16(b, y_b));
+			y = _mm256_add_epi16(y, min);
+			/* y_r_buf[i] = MINMAX(y, 0, (255 << 5)) - (128 << 5); */
+			_mm256_between_epi16(y, min, max);
+			_mm256_store_si256(y_buf + i, y);
+			/* cb = HIWORD(r*cb_r) + HIWORD(g*cb_g) + HIWORD(b*cb_b) */
+			cb = _mm256_mulhi_epi16(r, cb_r);
+			cb = _mm256_add_epi16(cb, _mm256_mulhi_epi16(g, cb_g));
+			cb = _mm256_add_epi16(cb, _mm256_mulhi_epi16(b, cb_b));
+			/* cb_g_buf[i] = MINMAX(cb, (-128 << 5), (127 << 5)); */
+			_mm256_between_epi16(cb, min, max);
+			_mm256_store_si256(cb_buf + i, cb);
+			/* cr = HIWORD(r*cr_r) + HIWORD(g*cr_g) + HIWORD(b*cr_b) */
+			cr = _mm256_mulhi_epi16(r, cr_r);
+			cr = _mm256_add_epi16(cr, _mm256_mulhi_epi16(g, cr_g));
+			cr = _mm256_add_epi16(cr, _mm256_mulhi_epi16(b, cr_b));
+			/* cr_b_buf[i] = MINMAX(cr, (-128 << 5), (127 << 5)); */
+			_mm256_between_epi16(cr, min, max);
+			_mm256_store_si256(cr_buf + i, cr);
+		}
+
+		y_buf += srcbump;
+		cb_buf += srcbump;
+		cr_buf += srcbump;
+		r_buf += dstbump;
+		g_buf += dstbump;
+		b_buf += dstbump;
+	}
+
+	return PRIMITIVES_SUCCESS;
+}
+#endif /* WITH_AVX2 */
 
 /*---------------------------------------------------------------------------*/
 static pstatus_t
@@ -1492,8 +1601,8 @@ void primitives_init_colors_opt(primitives_t* prims)
 {
 	generic = primitives_get_generic();
 	primitives_init_colors(prims);
-#if defined(WITH_SSE2)
 
+#if defined(WITH_SSE2)
 	if (IsProcessorFeaturePresent(PF_SSE2_INSTRUCTIONS_AVAILABLE))
 	{
 		prims->RGBToRGB_16s8u_P3AC4R = sse2_RGBToRGB_16s8u_P3AC4R;
@@ -1501,15 +1610,20 @@ void primitives_init_colors_opt(primitives_t* prims)
 		prims->yCbCrToRGB_16s8u_P3AC4R = sse2_yCbCrToRGB_16s8u_P3AC4R;
 		prims->RGBToYCbCr_16s16s_P3P3 = sse2_RGBToYCbCr_16s16s_P3P3;
 	}
+#endif /* WITH_SSE2 */
 
-#elif defined(WITH_NEON)
+#if defined(WITH_AVX2)
+	if (IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE) &&
+	    IsProcessorFeaturePresentEx(PF_EX_AVX2))
+		prims->RGBToYCbCr_16s16s_P3P3 = avx2_RGBToYCbCr_16s16s_P3P3;
+#endif /* WITH_AVX2 */
 
+#if defined(WITH_NEON)
 	if (IsProcessorFeaturePresent(PF_ARM_NEON_INSTRUCTIONS_AVAILABLE))
 	{
 		prims->RGBToRGB_16s8u_P3AC4R = neon_RGBToRGB_16s8u_P3AC4R;
 		prims->yCbCrToRGB_16s8u_P3AC4R = neon_yCbCrToRGB_16s8u_P3AC4R;
 		prims->yCbCrToRGB_16s16s_P3P3 = neon_yCbCrToRGB_16s16s_P3P3;
 	}
-
-#endif /* WITH_SSE2 */
+#endif /* WITH_NEON */
 }

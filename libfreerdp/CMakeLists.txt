@@ -167,6 +167,10 @@ set(CODEC_SIMD_SRCS
     codec/rfx_simd.c
     codec/rfx_simd.h)
 
+set(CODEC_AVX2_SRCS
+    codec/rfx_avx2.c
+    codec/rfx_avx2.h)
+
 set(CODEC_SSE2_SRCS
     codec/rfx_sse2.c
     codec/rfx_sse2.h
@@ -178,6 +182,18 @@ set(CODEC_NEON_SRCS
     codec/rfx_neon.h)
 
 set(CODEC_SRCS ${CODEC_SRCS} ${CODEC_SIMD_SRCS})
+
+if(WITH_AVX2)
+    set(CODEC_SRCS ${CODEC_SRCS} ${CODEC_AVX2_SRCS})
+
+    if(CMAKE_COMPILER_IS_GNUCC OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+        set_source_files_properties(${CODEC_AVX2_SRCS} PROPERTIES COMPILE_FLAGS "-mavx2" )
+    endif()
+
+    if(MSVC)
+        set_source_files_properties(${CODEC_AVX2_SRCS} PROPERTIES COMPILE_FLAGS "/arch:AVX2" )
+    endif()
+endif()
 
 if(WITH_SSE2)
     set(CODEC_SRCS ${CODEC_SRCS} ${CODEC_SSE2_SRCS})
@@ -295,7 +311,7 @@ set(PRIMITIVES_SRCS
     primitives/primitives.c
     primitives/prim_internal.h)
 
-if (WITH_SSE2 OR WITH_NEON)
+if (WITH_AVX2 OR WITH_SSE2 OR WITH_NEON)
     set(PRIMITIVES_SSE2_SRCS
         primitives/prim_colors_opt.c
         primitives/prim_set_opt.c)
@@ -344,6 +360,17 @@ if(WITH_IPP)
     endif()
 endif()
 
+if(WITH_AVX2)
+    if(CMAKE_COMPILER_IS_GNUCC OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+        set_source_files_properties(${PRIMITIVES_SSE2_SRCS}
+            PROPERTIES COMPILE_FLAGS "${OPTIMIZATION} -mavx2")
+    endif()
+
+    if(MSVC)
+        set_source_files_properties(${PRIMITIVES_OPT_SRCS}
+            PROPERTIES COMPILE_FLAGS "${OPTIMIZATION} /arch:AVX2")
+    endif()
+endif()
 if(WITH_SSE2)
     if(CMAKE_COMPILER_IS_GNUCC OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
         set_source_files_properties(${PRIMITIVES_SSE2_SRCS}

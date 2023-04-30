@@ -23,6 +23,7 @@
 
 #include <winpr/sysinfo.h>
 
+#include "rfx_avx2.h"
 #include "rfx_neon.h"
 #include "rfx_sse2.h"
 
@@ -30,6 +31,11 @@ void rfx_init_simd(RFX_CONTEXT* rfx_context)
 {
 	if (FALSE)
 		WINPR_ASSERT(FALSE);
+#ifdef WITH_AVX2
+	else if (IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE) &&
+	         IsProcessorFeaturePresentEx(PF_EX_AVX2))
+		rfx_init_avx2(rfx_context);
+#endif
 #ifdef WITH_SSE2
 	else if (IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE))
 		rfx_init_sse2(rfx_context);
