@@ -153,18 +153,18 @@ BOOL freerdp_read_four_byte_float(wStream* s, double* value)
 			break;
 		case TWO_BYTE_VAL:
 			Stream_Read_UINT8(s, f.val2);
-			base = f.val1 << 8 | f.val2;
+			base = f.val1 << 8u | f.val2 << 0u;
 			break;
 		case THREE_BYTE_VAL:
 			Stream_Read_UINT8(s, f.val2);
 			Stream_Read_UINT8(s, f.val3);
-			base = f.val1 << 16 | f.val2 << 8 | f.val3;
+			base = f.val1 << 16u | f.val2 << 8u | f.val3 << 0u;
 			break;
 		case FOUR_BYTE_VAL:
 			Stream_Read_UINT8(s, f.val2);
 			Stream_Read_UINT8(s, f.val3);
 			Stream_Read_UINT8(s, f.val4);
-			base = f.val1 << 24 | f.val2 << 16 | f.val3 << 8 | f.val4;
+			base = f.val1 << 24u | f.val2 << 16u | f.val3 << 8u | f.val4 << 0u;
 			break;
 		case FIVE_BYTE_VAL:
 		case SIX_BYTE_VAL:
